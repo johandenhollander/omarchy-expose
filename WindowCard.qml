@@ -5,8 +5,9 @@ import Quickshell.Hyprland
 import Quickshell.Wayland
 import "WindowModel.js" as WindowModel
 import qs.Commons
+import qs.Ui as Ui
 
-Rectangle {
+Ui.BorderSurface {
     id: card
 
     required property var modelData
@@ -32,8 +33,11 @@ Rectangle {
     readonly property string applicationName: WindowModel.appIdFor(modelData) || "Application"
     readonly property string workspaceName: card.controller.workspaceName(modelData)
     readonly property string iconSource: card.controller.iconFor(modelData)
-    readonly property color outlineColor: focusedWindow ? Color.accent : (selected ? Color.menu.selectedText : Color.menu.border)
-    readonly property real outlineWidth: hovered ? Math.max(4, Style.hoverBorderWidth * 2) : (focusedWindow ? Math.max(2, Style.selectedBorderWidth) : (selected ? Math.max(2, Style.focusBorderWidth) : Math.max(1, Style.normalBorderWidth)))
+    // Keyboard selection and mouse hover are the shell's transient cursor;
+    // the active Hyprland window is its persistent selected state.
+    readonly property string outlineState: hovered || selected ? "hover-cursor" : focusedWindow ? "selected" : "normal"
+    readonly property var outlineSpec: Border.controlSpec(outlineState, Color.menu.text, Color.accent)
+    readonly property color currentColor: Style.selectedStateColor(Color.menu.text, Color.accent)
     // An excluded card keeps its last rectangle, so it neither
     // animates toward the origin nor flies back in from it.
     readonly property var packedRectSource: inLayout ? card.windowLayout[slot] : null
@@ -59,8 +63,7 @@ Rectangle {
     z: previewed ? 11 : (exitingPreview ? 10 : 0)
     radius: integratedFooter ? Style.cornerRadius : 0
     color: integratedFooter ? Color.menu.background : "transparent"
-    border.color: integratedFooter ? outlineColor : "transparent"
-    border.width: integratedFooter ? outlineWidth : 0
+    borderSpec: integratedFooter ? outlineSpec : Border.none()
     opacity: card.controller.previewIndex < 0 || previewed ? 1 : 0.28
 
     MouseArea {
@@ -158,14 +161,13 @@ Rectangle {
 
             }
 
-            Rectangle {
+            Ui.BorderSurface {
                 anchors.fill: previewFrame
                 visible: !card.integratedFooter
                 z: 5
                 radius: previewFrame.radius
                 color: "transparent"
-                border.color: card.outlineColor
-                border.width: card.outlineWidth
+                borderSpec: card.outlineSpec
             }
 
             Rectangle {
@@ -224,7 +226,7 @@ Rectangle {
         CardText {
             Layout.alignment: Qt.AlignRight
             text: card.workspaceName
-            color: card.focusedWindow ? Color.accent : Color.menu.text
+            color: card.focusedWindow ? card.currentColor : Color.menu.text
             font.pixelSize: Style.font.heading
             font.bold: true
         }
@@ -258,7 +260,7 @@ Rectangle {
 
                     GradientStop {
                         position: 1
-                        color: Qt.rgba(0, 0, 0, 0.94)
+                        color: Color.menu.background
                     }
                 }
             }
@@ -331,7 +333,7 @@ Rectangle {
 
             CardText {
                 text: "WS " + card.workspaceName
-                color: card.focusedWindow ? Color.accent : Color.menu.text
+                color: card.focusedWindow ? card.currentColor : Color.menu.text
                 opacity: card.focusedWindow ? 1 : 0.68
                 font.pixelSize: Style.font.caption
                 font.bold: true
@@ -358,7 +360,7 @@ Rectangle {
                 Layout.alignment: Qt.AlignHCenter
                 Layout.maximumWidth: Math.max(1, card.width - Style.space(32))
                 text: card.applicationName + "  ·  Workspace " + card.workspaceName
-                color: card.focusedWindow ? Color.accent : Color.menu.text
+                color: card.focusedWindow ? card.currentColor : Color.menu.text
                 opacity: card.focusedWindow ? 1 : 0.62
                 font.pixelSize: Style.font.caption
                 elide: Text.ElideRight

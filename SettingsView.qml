@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import qs.Commons
+import qs.Ui as Ui
 
 Item {
     id: settingsView
@@ -24,7 +25,7 @@ Item {
         signal edited(real nextValue)
         signal committed(real nextValue)
         implicitWidth: Style.space(280)
-        implicitHeight: Style.space(32)
+        implicitHeight: Style.spacing.controlHeight
         activeFocusOnTab: true
         readonly property real span: Math.max(0.000001, to - from)
         readonly property real normalizedValue: Math.max(0, Math.min(1, (value - from) / span))
@@ -76,30 +77,33 @@ Item {
                     anchors.left: parent.left
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    height: Math.max(1, Style.normalBorderWidth)
-                    color: Color.menu.border
+                    // The track is value geometry, not a border.
+                    height: Style.space(2)
+                    color: Style.normalFillFor(Color.menu.text, Color.accent)
                 }
 
                 Rectangle {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     width: parent.width * settingSlider.normalizedValue
-                    height: Math.max(2, Style.focusBorderWidth)
-                    color: Color.accent
+                    height: Style.space(3)
+                    color: Style.selectedStateColor(Color.menu.text, Color.accent)
                 }
 
-                Rectangle {
+                ThemedControl {
                     id: sliderHandle
                     width: Style.space(12)
                     height: width
                     x: Math.round((parent.width - width) * settingSlider.normalizedValue)
                     anchors.verticalCenter: parent.verticalCenter
-                    color: Color.accent
-                    border.color: Color.background
-                    border.width: Math.max(1, Style.normalBorderWidth)
+                    focused: settingSlider.activeFocus
+                    hovered: sliderMouse.containsMouse
+                    pressed: sliderMouse.pressed
+                    color: stateColor
                 }
 
                 MouseArea {
+                    id: sliderMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
@@ -122,7 +126,7 @@ Item {
                 horizontalAlignment: Text.AlignRight
                 text: Math.round(settingSlider.value) + settingSlider.suffix
                 textFormat: Text.PlainText
-                color: settingSlider.activeFocus ? Color.accent : Color.menu.text
+                color: sliderHandle.stateColor
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.caption
                 font.bold: settingSlider.activeFocus
@@ -173,36 +177,31 @@ Item {
         Repeater {
             model: settingChoices.options
 
-            delegate: Item {
+            delegate: ThemedControl {
                 id: choice
                 required property var modelData
-                readonly property bool selected: String(modelData.value) === settingChoices.value
-                Layout.preferredWidth: choiceLabel.implicitWidth
-                Layout.preferredHeight: Style.space(28)
+                selected: String(modelData.value) === settingChoices.value
+                focused: settingChoices.activeFocus && selected
+                hovered: choiceMouse.containsMouse
+                pressed: choiceMouse.pressed
+                Layout.preferredWidth: choiceLabel.implicitWidth + Style.spacing.controlPaddingX * 2
+                Layout.preferredHeight: Math.max(Style.spacing.controlHeight, choiceLabel.implicitHeight + Style.spacing.controlPaddingY * 2)
 
                 Text {
                     id: choiceLabel
                     anchors.centerIn: parent
                     text: String(choice.modelData.label)
                     textFormat: Text.PlainText
-                    color: choice.selected && settingChoices.activeFocus ? Color.accent : Color.menu.text
-                    opacity: choice.selected ? 1 : 0.45
+                    color: choice.stateColor
                     font.family: Style.font.menuFamily
                     font.pixelSize: Style.font.caption
                     font.bold: choice.selected
                 }
 
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: Math.max(2, Style.focusBorderWidth)
-                    visible: choice.selected
-                    color: Color.accent
-                }
-
                 MouseArea {
+                    id: choiceMouse
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         settingChoices.forceActiveFocus();
@@ -259,15 +258,15 @@ Item {
         Repeater {
             model: displayModeChoices.options
 
-            delegate: Rectangle {
+            delegate: ThemedControl {
                 id: displayModeChoice
                 required property var modelData
-                readonly property bool selected: String(modelData.value) === displayModeChoices.value
+                selected: String(modelData.value) === displayModeChoices.value
+                focused: displayModeChoices.activeFocus && selected
+                hovered: displayModeMouse.containsMouse
+                pressed: displayModeMouse.pressed
                 Layout.fillWidth: true
                 Layout.preferredHeight: Style.space(64)
-                color: "transparent"
-                border.color: displayModeChoices.activeFocus && selected ? Color.accent : Color.menu.border
-                border.width: Math.max(1, Style.normalBorderWidth)
 
                 ColumnLayout {
                     anchors.fill: parent
@@ -278,8 +277,7 @@ Item {
                         Layout.fillWidth: true
                         text: String(displayModeChoice.modelData.label)
                         textFormat: Text.PlainText
-                        color: Color.menu.text
-                        opacity: displayModeChoice.selected ? 1 : 0.6
+                        color: displayModeChoice.stateColor
                         font.family: Style.font.menuFamily
                         font.pixelSize: Style.font.body
                         font.bold: displayModeChoice.selected
@@ -297,17 +295,10 @@ Item {
                     }
                 }
 
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    height: Math.max(2, Style.focusBorderWidth)
-                    visible: displayModeChoice.selected
-                    color: Color.accent
-                }
-
                 MouseArea {
+                    id: displayModeMouse
                     anchors.fill: parent
+                    hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
                         displayModeChoices.forceActiveFocus();
@@ -318,14 +309,14 @@ Item {
         }
     }
 
-    component SettingsCategoryButton: Item {
+    component SettingsCategoryButton: ThemedControl {
         id: categoryButton
         property int categoryIndex: 0
         property int categoryCount: 1
         property string label: ""
-        property bool selected: false
         property bool horizontal: false
-        property bool hovered: false
+        focused: activeFocus
+        pressed: categoryMouse.pressed
         signal chosen(int nextIndex)
         implicitWidth: Style.space(horizontal ? 140 : 200)
         implicitHeight: Style.space(horizontal ? 52 : 48)
@@ -365,21 +356,6 @@ Item {
             event.accepted = true;
         }
 
-        Rectangle {
-            anchors.fill: parent
-            color: Color.accent
-            opacity: categoryButton.selected ? 0.07 : (categoryButton.hovered ? 0.035 : 0)
-        }
-
-        Rectangle {
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            width: categoryButton.horizontal ? parent.width : Math.max(2, Style.focusBorderWidth)
-            height: categoryButton.horizontal ? Math.max(2, Style.focusBorderWidth) : parent.height
-            visible: categoryButton.selected
-            color: Color.accent
-        }
-
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: Style.space(categoryButton.horizontal ? 8 : 18)
@@ -391,8 +367,7 @@ Item {
                 text: String(categoryButton.categoryIndex + 1)
                 textFormat: Text.PlainText
                 horizontalAlignment: Text.AlignHCenter
-                color: categoryButton.selected ? Color.accent : Color.menu.text
-                opacity: categoryButton.selected || categoryButton.hovered ? 1 : 0.45
+                color: categoryButton.stateColor
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.caption
                 font.bold: categoryButton.selected
@@ -403,8 +378,7 @@ Item {
                 text: categoryButton.label
                 textFormat: Text.PlainText
                 horizontalAlignment: Text.AlignLeft
-                color: Color.menu.text
-                opacity: categoryButton.selected || categoryButton.hovered ? 1 : 0.55
+                color: categoryButton.stateColor
                 font.family: Style.font.menuFamily
                 font.pixelSize: Style.font.bodySmall
                 font.bold: categoryButton.selected
@@ -413,15 +387,8 @@ Item {
 
         }
 
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: Style.space(2)
-            color: "transparent"
-            border.color: categoryButton.activeFocus ? Color.accent : "transparent"
-            border.width: categoryButton.activeFocus ? Math.max(2, Style.focusBorderWidth) : 0
-        }
-
         MouseArea {
+            id: categoryMouse
             anchors.fill: parent
             hoverEnabled: true
             cursorShape: Qt.PointingHandCursor
@@ -432,17 +399,14 @@ Item {
         }
     }
 
-    component SettingsDivider: Rectangle {
-        implicitHeight: Math.max(1, Style.normalBorderWidth)
-        color: Color.menu.border
-    }
+    component SettingsDivider: ThemeDivider {}
 
     component SettingToggle: Item {
         id: settingToggle
         property bool checked: false
         signal toggled(bool checked)
         implicitWidth: Style.space(72)
-        implicitHeight: Style.space(28)
+        implicitHeight: Style.spacing.controlHeight
         activeFocusOnTab: true
 
         Keys.onPressed: function (event) {
@@ -462,38 +426,35 @@ Item {
             text: settingToggle.checked ? "On" : "Off"
             textFormat: Text.PlainText
             color: Color.menu.text
-            opacity: settingToggle.checked ? 1 : 0.45
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.caption
         }
 
-        Rectangle {
+        ThemedControl {
+            id: toggleTrack
+            selected: settingToggle.checked
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
             width: Style.space(30)
             height: Style.space(14)
-            color: "transparent"
-            border.color: settingToggle.checked ? Color.accent : Color.menu.border
-            border.width: Math.max(1, Style.normalBorderWidth)
 
             Rectangle {
                 width: Style.space(10)
                 height: width
                 anchors.verticalCenter: parent.verticalCenter
                 x: settingToggle.checked ? parent.width - width - Style.space(2) : Style.space(2)
-                color: settingToggle.checked ? Color.accent : Color.menu.text
-                opacity: settingToggle.checked ? 1 : 0.45
+                color: toggleTrack.stateColor
+                radius: Math.min(Style.cornerRadius, height / 2)
                 Behavior on x { NumberAnimation { duration: 100 } }
             }
         }
 
-        Rectangle {
+        ThemedControl {
             anchors.fill: parent
             anchors.margins: -Style.space(4)
             visible: settingToggle.activeFocus
+            focused: true
             color: "transparent"
-            border.color: Color.accent
-            border.width: Math.max(2, Style.focusBorderWidth)
         }
 
         MouseArea {
@@ -504,18 +465,16 @@ Item {
         }
     }
 
-    component DialogButton: Rectangle {
+    component DialogButton: ThemedControl {
         id: dialogButton
         property string label: ""
         property bool destructive: false
-        property bool hovered: false
+        focused: activeFocus
+        pressed: dialogMouse.pressed
         signal clicked()
-        implicitWidth: buttonLabel.implicitWidth + Style.space(28)
-        implicitHeight: Style.space(36)
+        implicitWidth: buttonLabel.implicitWidth + Style.spacing.controlPaddingX * 2
+        implicitHeight: Math.max(Style.spacing.controlHeight, buttonLabel.implicitHeight + Style.spacing.controlPaddingY * 2)
         activeFocusOnTab: true
-        color: "transparent"
-        border.color: enabled && (activeFocus || hovered || destructive) ? Color.accent : Color.menu.border
-        border.width: activeFocus ? Math.max(2, Style.focusBorderWidth) : Math.max(1, Style.normalBorderWidth)
         opacity: enabled ? 1 : 0.38
 
         Keys.onPressed: function (event) {
@@ -534,13 +493,14 @@ Item {
             anchors.centerIn: parent
             text: dialogButton.label
             textFormat: Text.PlainText
-            color: Color.menu.text
+            color: dialogButton.destructive ? Color.urgent : dialogButton.stateColor
             font.family: Style.font.menuFamily
             font.pixelSize: Style.font.bodySmall
             font.bold: dialogButton.destructive
         }
 
         MouseArea {
+            id: dialogMouse
             anchors.fill: parent
             enabled: dialogButton.enabled
             hoverEnabled: true
@@ -656,7 +616,7 @@ Item {
         onClicked: settingsView.controller.closeSettings()
     }
 
-    Rectangle {
+    Ui.BorderSurface {
         id: settingsDialog
         readonly property bool narrow: width < Style.space(760)
         anchors.centerIn: parent
@@ -664,8 +624,7 @@ Item {
         height: Math.min(Style.space(narrow ? 720 : 640), parent.height - Style.space(80))
         radius: Style.cornerRadius
         color: Color.menu.background
-        border.color: Color.menu.border
-        border.width: Math.max(1, Style.normalBorderWidth)
+        borderSpec: Border.surfaceSpec("menu", "border", Color.foreground, Style.normalBorderWidth)
         enabled: !settingsView.controller.footerHideConfirmationOpen
 
         MouseArea {
@@ -762,12 +721,12 @@ Item {
                         }
                     }
 
-                    Rectangle {
+                    ThemeDivider {
                         anchors.right: parent.right
                         anchors.bottom: parent.bottom
-                        width: settingsDialog.narrow ? parent.width : Math.max(1, Style.normalBorderWidth)
-                        height: settingsDialog.narrow ? Math.max(1, Style.normalBorderWidth) : parent.height
-                        color: Color.menu.border
+                        vertical: !settingsDialog.narrow
+                        width: vertical ? implicitWidth : parent.width
+                        height: vertical ? parent.height : implicitHeight
                     }
                 }
 
@@ -1469,19 +1428,17 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "black"
-            opacity: 0.72
+            color: Color.menu.scrim
         }
 
-        Rectangle {
+        Ui.BorderSurface {
             id: footerHideDialog
             anchors.centerIn: parent
             width: Math.min(Style.space(560), parent.width - Style.space(80))
             height: Math.min(parent.height - Style.space(80), footerHideContent.implicitHeight + Style.space(56))
             radius: Style.cornerRadius
             color: Color.menu.background
-            border.color: Color.menu.border
-            border.width: Math.max(1, Style.normalBorderWidth)
+            borderSpec: Border.surfaceSpec("menu", "border", Color.foreground, Style.normalBorderWidth)
 
             MouseArea {
                 anchors.fill: parent
@@ -1514,12 +1471,9 @@ Item {
                     font.pixelSize: Style.font.body
                 }
 
-                Rectangle {
+                ThemedControl {
                     Layout.fillWidth: true
                     Layout.preferredHeight: recoveryText.implicitHeight + Style.space(24)
-                    color: Color.background
-                    border.color: Color.menu.border
-                    border.width: Math.max(1, Style.normalBorderWidth)
 
                     Text {
                         id: recoveryText
@@ -1557,23 +1511,19 @@ Item {
                         anchors.fill: parent
                         spacing: Style.spacing.md
 
-                        Rectangle {
+                        ThemedControl {
+                            id: acknowledgementBox
                             Layout.preferredWidth: Style.space(18)
                             Layout.preferredHeight: Style.space(18)
-                            color: settingsView.controller.footerHideAcknowledged ? Color.accent : "transparent"
-                            border.color: footerHideAcknowledgement.activeFocus || settingsView.controller.footerHideAcknowledged
-                                ? Color.accent
-                                : Color.menu.border
-                            border.width: footerHideAcknowledgement.activeFocus
-                                ? Math.max(2, Style.focusBorderWidth)
-                                : Math.max(1, Style.normalBorderWidth)
+                            selected: settingsView.controller.footerHideAcknowledged
+                            focused: footerHideAcknowledgement.activeFocus
 
                             Text {
                                 anchors.centerIn: parent
                                 visible: settingsView.controller.footerHideAcknowledged
                                 text: "✓"
                                 textFormat: Text.PlainText
-                                color: Color.background
+                                color: acknowledgementBox.stateColor
                                 font.family: Style.font.menuFamily
                                 font.pixelSize: Style.font.caption
                                 font.bold: true

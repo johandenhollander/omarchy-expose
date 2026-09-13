@@ -19,14 +19,19 @@ command -v omarchy >/dev/null || {
 
 QT_QPA_PLATFORM=offscreen "$qt6_bin/qmltestrunner" -input tests
 
-# The shell's runtime-injected types are annotated where they are used so
-# qmllint still catches unrelated missing imports and types.
+# Make the installed UI component types visible to qmllint. Commons' dynamic
+# singleton objects remain runtime-injected, as in the shell itself.
+lint_dir=$(mktemp -d)
+trap 'rm -rf "$lint_dir"' EXIT
+mkdir -p "$lint_dir/qs"
+ln -s /usr/share/omarchy/shell/Ui "$lint_dir/qs/Ui"
 "$qt6_bin/qmllint" \
+  -I "$lint_dir" \
   --max-warnings 0 \
   --unqualified disable \
-  Overview.qml WindowCard.qml SettingsView.qml
+  Overview.qml WindowCard.qml SettingsView.qml ThemedControl.qml ThemeDivider.qml
 
-bash -n activate-window background-blur-session
+bash -n activate-window background-blur-session tests/check-theme-runtime
 
 omarchy plugin validate .
 

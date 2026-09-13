@@ -1,0 +1,26 @@
+#!/bin/bash
+# Exercise actual shell theme singletons and Exposé views in an isolated process.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+test_dir=$(mktemp -d)
+trap 'rm -rf "$test_dir"' EXIT
+ln -s /usr/share/omarchy/shell/Commons "$test_dir/Commons"
+ln -s /usr/share/omarchy/shell/Ui "$test_dir/Ui"
+cp WindowCard.qml SettingsView.qml ThemedControl.qml ThemeDivider.qml WindowModel.js "$test_dir/"
+cp tests/theme/shell.qml "$test_dir/shell.qml"
+
+output_dir=${1:-}
+if [[ -n $output_dir ]]; then
+  mkdir -p "$output_dir"
+  output_dir=$(realpath "$output_dir")
+fi
+QT_QPA_PLATFORM=offscreen EXPOSE_THEME_OUTPUT_DIR="$output_dir" \
+  timeout 15s quickshell --no-color -p "$test_dir/shell.qml" > "$test_dir/output" 2>&1 || {
+    cat "$test_dir/output"
+    exit 1
+  }
+cat "$test_dir/output"
+rg -q 'PASS: real shell theme tokens' "$test_dir/output"
+if rg -q 'FAIL:|TypeError|ReferenceError|Unable to assign|Binding loop|Failed to load configuration' "$test_dir/output"; then
+  exit 1
+fi
