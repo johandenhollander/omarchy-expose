@@ -1,0 +1,52 @@
+#!/bin/bash
+# Run the settings store against the real host API and FileView, in isolation.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+lint_only=false
+if [[ ${1:-} == --lint ]]; then
+  lint_only=true
+  shift
+fi
+shell_dir=${1:-/usr/share/omarchy/shell}
+test_dir=$(mktemp -d)
+trap 'rm -rf "$test_dir"' EXIT
+
+mkdir "$test_dir/Commons"
+cp PluginSettings.qml "$test_dir/"
+cp "$shell_dir/services/PluginShellApi.qml" "$test_dir/"
+cp "$shell_dir/Commons/Util.qml" "$test_dir/Commons/"
+printf 'singleton Util 1.0 Util.qml\n' > "$test_dir/Commons/qmldir"
+
+cat > "$test_dir/config.json" <<'EOF'
+{"version":1,"bar":{"layout":{"left":[{"id":"other.widget","keep":true}],"center":[],"right":[]}},"plugins":[{"id":"other.plugin","keep":true},{"id":"expose.window-overview","hotCornerEnabled":false,"backgroundDim":50,"unknownSetting":{"preserve":true}}]}
+EOF
+
+while IFS= read -r line; do
+  if [[ $line == '// HOST FUNCTIONS' ]]; then
+    sed -n '/^  function applyShellConfig(/,/^  }/p; /^  function persistShellConfig(/,/^  }/p; /^  function updateEntryInline(/,/^  }/p' "$shell_dir/shell.qml"
+  else
+    printf '%s\n' "$line"
+  fi
+done < tests/runtime/settings.qml > "$test_dir/shell.qml"
+
+for method in applyShellConfig persistShellConfig updateEntryInline; do
+  if ! rg -q "^  function ${method}\\(" "$test_dir/shell.qml"; then
+    printf 'settings runtime check: could not extract %s from %s/shell.qml\n' "$method" "$shell_dir" >&2
+    exit 1
+  fi
+done
+
+if $lint_only; then
+  /usr/lib/qt6/bin/qmllint --max-warnings 0 --unqualified disable "$test_dir/shell.qml"
+  exit 0
+fi
+
+QT_QPA_PLATFORM=offscreen timeout 15s quickshell --no-color -p "$test_dir/shell.qml" > "$test_dir/output" 2>&1 || {
+  cat "$test_dir/output"
+  exit 1
+}
+cat "$test_dir/output"
+rg -q 'PASS: real PluginShellApi' "$test_dir/output"
+if rg -q 'FAIL:|WARN|ERROR' "$test_dir/output"; then
+  exit 1
+fi
