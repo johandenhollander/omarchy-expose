@@ -33,10 +33,8 @@ Ui.BorderSurface {
     readonly property string applicationName: WindowModel.appIdFor(modelData) || "Application"
     readonly property string workspaceName: card.controller.workspaceName(modelData)
     readonly property string iconSource: card.controller.iconFor(modelData)
-    // Keyboard selection and mouse hover are the shell's transient cursor;
-    // the active Hyprland window is its persistent selected state.
-    readonly property string outlineState: hovered || selected ? "hover-cursor" : focusedWindow ? "selected" : "normal"
-    readonly property var outlineSpec: Border.controlSpec(outlineState, Color.menu.text, Color.accent)
+    readonly property var outlineSpec: hovered || selected || focusedWindow
+        ? controller.windowBorders.activeSpec : controller.windowBorders.inactiveSpec
     readonly property color currentColor: Style.selectedStateColor(Color.menu.text, Color.accent)
     // An excluded card keeps its last rectangle, so it neither
     // animates toward the origin nor flies back in from it.

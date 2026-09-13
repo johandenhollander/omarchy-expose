@@ -7,8 +7,8 @@ expected Wayland/buffer-backend warnings.
 
 Coverage includes state-specific zero borders, asymmetric widths, side overrides,
 gradients, alpha, control fill, radius, typography, spacing, and live theme changes.
-After switching to the borderless theme it checks every instantiated border
-surface, including inactive settings categories.
+After switching to the borderless theme it checks every instantiated settings
+border surface, including inactive settings categories.
 
 The theme audit used Omarchy source at `31bd80daa4613ffdee995ac27467fce5a2990806`:
 
@@ -21,11 +21,19 @@ The theme audit used Omarchy source at `31bd80daa4613ffdee995ac27467fce5a2990806
 - [Color.qml](https://github.com/omacom/omarchy/blob/31bd80daa4613ffdee995ac27467fce5a2990806/shell/Commons/Color.qml)
   layers user theme overrides and provides menu background/text/scrim roles.
 
-Window-card mouse and keyboard cursors use hover-cursor state; the active window
-uses selected state. Settings controls use focus, hover, selected, and normal
-states. Dialog/search surfaces use menu border specs. No state forces a border
-when its theme width or alpha is zero. Slider tracks and handles remain value
-geometry rather than borrowing border widths for their dimensions.
+Window cards read the live compositor's `general:border_size` and active/inactive
+border gradients with a read-only `hyprctl` batch. The active window, mouse hover,
+and keyboard selection use the active gradient; other cards use the inactive one.
+Compositor reloads and opening the overview refresh the snapshot. This preserves
+window widths and alpha independently of `[controls]`, whose selected border is
+commonly zero even when desktop windows have visible borders.
+
+The runtime check covers packed ARGB conversion, transparent colors, gradients,
+active/inactive selection, malformed queries, zero compositor width, and live
+width/color changes. Settings controls still use focus, hover, selected, and
+normal states. Dialog/search surfaces use menu border specs. No state forces a
+border when its own width or alpha is zero. Slider tracks and handles remain
+value geometry rather than borrowing border widths for their dimensions.
 
 The audit preserves Exposé's blur/dim behavior and animation controls. Other
 remaining numeric opacity values express secondary text, disabled controls, or
