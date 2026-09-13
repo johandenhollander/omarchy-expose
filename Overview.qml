@@ -16,13 +16,27 @@ Item {
     readonly property string pluginId: String((root.manifest && root.manifest.id) || "expose.window-overview")
     readonly property string pluginDir: String((root.manifest && root.manifest.__sourceDir)
         || (Quickshell.env("HOME") + "/.config/omarchy/plugins/" + root.pluginId))
-    readonly property var pluginEntry: {
-        var config = root.shell && root.shell.shellConfig ? root.shell.shellConfig : null;
-        var plugins = config && Array.isArray(config.plugins) ? config.plugins : [];
-        for (var i = 0; i < plugins.length; i++)
-            if (plugins[i] && String(plugins[i].id || "") === root.pluginId)
-                return plugins[i];
-        return null;
+    readonly property var pluginEntry: pluginSettings.entry
+
+    PluginSettings {
+        id: pluginSettings
+        pluginId: root.pluginId
+        shell: root.shell
+        onReloadRequested: Qt.callLater(pluginSettingsFile.reload)
+    }
+
+    FileView {
+        id: pluginSettingsFile
+        // Match the host's userConfigPath, which does not use XDG_CONFIG_HOME.
+        path: Quickshell.env("HOME") + "/.config/omarchy/shell.json"
+        watchChanges: true
+        printErrors: false
+        onLoaded: pluginSettings.load(text())
+        onLoadFailed: function(error) {
+            pluginSettings.loadFailed();
+            console.warn(root.pluginId + ": could not load shell.json: " + error);
+        }
+        onFileChanged: Qt.callLater(pluginSettingsFile.reload)
     }
     readonly property string previewPlacement: root.pluginEntry && root.pluginEntry.previewPlacement === "centered" ? "centered" : "in-place"
     readonly property var windowFooterStyles: ["floating", "integrated", "overlay", "centered"]
@@ -112,7 +126,7 @@ Item {
         var value = raw === null || raw === undefined ? NaN : Number(raw);
         return isFinite(value) ? Math.max(0, Math.min(90, Math.round(value))) : 6;
     }
-    readonly property bool hotCornerEnabled: !root.pluginEntry || root.pluginEntry.hotCornerEnabled !== false
+    readonly property bool hotCornerEnabled: pluginSettings.ready && root.pluginEntry.hotCornerEnabled !== false
     readonly property var hotCornerPositions: ["top-left", "top-right", "bottom-left", "bottom-right"]
     readonly property string hotCornerPosition: {
         var position = String((root.pluginEntry && root.pluginEntry.hotCornerPosition) || "top-left");
@@ -418,15 +432,7 @@ Item {
     }
 
     function updatePluginSetting(name, value) {
-        if (!root.shell || typeof root.shell.updateEntryInline !== "function")
-            return;
-        var settings = {};
-        var current = root.pluginEntry || {};
-        for (var key in current)
-            if (key !== "id")
-                settings[key] = current[key];
-        settings[name] = value;
-        root.shell.updateEntryInline(root.pluginId, settings);
+        return pluginSettings.update(name, value);
     }
 
     function setPreviewPlacement(value) {
@@ -628,8 +634,9 @@ Item {
 
     function setHotCornerEnabled(enabled) {
         var next = enabled === true;
-        if (next !== root.hotCornerEnabled)
-            root.updatePluginSetting("hotCornerEnabled", next);
+        // The corner is also disabled while settings load; an early "off"
+        // command must still be queued even though the surface is inactive.
+        root.updatePluginSetting("hotCornerEnabled", next);
     }
 
     function setHotCornerPosition(value) {
