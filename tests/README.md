@@ -1,5 +1,6 @@
 Run `./validate` for the Qt 6 unit tests, QML lint, shell checks, and manifest
-validation. `./tests/check-settings-runtime` additionally runs Quickshell with a
+validation, including lint of the assembled runtime fixture.
+`./tests/check-settings-runtime` additionally runs Quickshell with a
 temporary config and the installed Omarchy host's actual `PluginShellApi`,
 `applyShellConfig`, `persistShellConfig`, and `updateEntryInline` implementations.
 It creates no windows and does not access the live user's shell.json. Pass a shell

@@ -26,6 +26,9 @@ QT_QPA_PLATFORM=offscreen "$qt6_bin/qmltestrunner" -input tests
   --unqualified disable \
   Overview.qml WindowCard.qml SettingsView.qml PluginSettings.qml
 
+# Lint the runtime fixture after injecting its host functions and imports.
+./tests/check-settings-runtime --lint
+
 bash -n activate-window background-blur-session tests/check-settings-runtime
 
 omarchy plugin validate .

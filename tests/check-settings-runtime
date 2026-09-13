@@ -2,6 +2,11 @@
 # Run the settings store against the real host API and FileView, in isolation.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+lint_only=false
+if [[ ${1:-} == --lint ]]; then
+  lint_only=true
+  shift
+fi
 shell_dir=${1:-/usr/share/omarchy/shell}
 test_dir=$(mktemp -d)
 trap 'rm -rf "$test_dir"' EXIT
@@ -30,6 +35,11 @@ for method in applyShellConfig persistShellConfig updateEntryInline; do
     exit 1
   fi
 done
+
+if $lint_only; then
+  /usr/lib/qt6/bin/qmllint --max-warnings 0 --unqualified disable "$test_dir/shell.qml"
+  exit 0
+fi
 
 QT_QPA_PLATFORM=offscreen timeout 15s quickshell --no-color -p "$test_dir/shell.qml" > "$test_dir/output" 2>&1 || {
   cat "$test_dir/output"
