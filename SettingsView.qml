@@ -537,7 +537,8 @@ Item {
             return settingsView.availableFocusItems([
                 categoryButton,
                 hotCornerToggle,
-                hotCornerPositionChoices
+                hotCornerPositionChoices,
+                hotCornerDelaySlider
             ]);
         if (settingsView.controller.settingsCategoryIndex === 2)
             return settingsView.availableFocusItems([
@@ -936,6 +937,34 @@ Item {
                                         { label: "BR", value: "bottom-right" }
                                     ]
                                     onChosen: function (value) { settingsView.controller.setHotCornerPosition(value); }
+                                }
+                            }
+
+                            SettingsDivider { Layout.fillWidth: true }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: Style.space(48)
+                                Text {
+                                    Layout.preferredWidth: Style.space(120)
+                                    text: "Delay"
+                                    textFormat: Text.PlainText
+                                    color: Color.menu.text
+                                    font.family: Style.font.menuFamily
+                                    font.pixelSize: Style.font.body
+                                }
+                                SettingSlider {
+                                    id: hotCornerDelaySlider
+                                    Layout.fillWidth: true
+                                    from: 0
+                                    to: 1000
+                                    stepSize: 25
+                                    value: settingsView.controller.effectiveHotCornerDelay
+                                    suffix: " ms"
+                                    onEdited: function (value) { settingsView.controller.hotCornerDelayPreview = value; }
+                                    onCommitted: function (value) {
+                                        settingsView.controller.hotCornerDelayPreview = settingsView.controller.setHotCornerDelay(value);
+                                    }
                                 }
                             }
 

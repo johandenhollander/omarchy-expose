@@ -137,6 +137,13 @@ Item {
     }
     readonly property bool hotCornerOnTop: root.hotCornerPosition.indexOf("top-") === 0
     readonly property bool hotCornerOnLeft: root.hotCornerPosition.indexOf("-left") !== -1
+    // How long the pointer has to rest in the corner before it fires. Zero
+    // keeps the original instant trip; longer dwells stop stray flings.
+    readonly property int hotCornerDelay: {
+        var raw = root.pluginEntry ? root.pluginEntry.hotCornerDelay : undefined;
+        var value = raw === null || raw === undefined ? NaN : Number(raw);
+        return isFinite(value) ? Math.max(0, Math.min(1000, Math.round(value))) : 0;
+    }
     // Reach farther along both screen edges than into the desktop. Fast flings
     // are easier to catch without stealing a large square from the bar below.
     readonly property int hotCornerReach: Style.space(48)
@@ -167,8 +174,10 @@ Item {
     property real animationOutDurationPreview: -1
     property real backgroundBlurPreview: -1
     property real backgroundDimPreview: -1
+    property real hotCornerDelayPreview: -1
     readonly property real effectiveBackgroundBlur: root.backgroundBlurPreview >= 0 ? root.backgroundBlurPreview : root.backgroundBlur
     readonly property real effectiveBackgroundDim: root.backgroundDimPreview >= 0 ? root.backgroundDimPreview : root.backgroundDim
+    readonly property int effectiveHotCornerDelay: root.hotCornerDelayPreview >= 0 ? Math.round(root.hotCornerDelayPreview) : root.hotCornerDelay
     readonly property int previewAnimationDuration: root.previewSlowMotion || root.previewNavigationSlowMotion ? 4000 : 190
     readonly property int previewFadeDuration: root.previewSlowMotion || root.previewNavigationSlowMotion ? 4000 : 130
     readonly property int previewAnimationEasing: root.previewNavigationSlowMotion ? Easing.InOutCubic : Easing.OutQuart
@@ -606,6 +615,7 @@ Item {
         root.clearAnimationTimingPreview();
         root.backgroundBlurPreview = -1;
         root.backgroundDimPreview = -1;
+        root.hotCornerDelayPreview = -1;
         root.settingsCategoryIndex = 0;
         root.settingsOpen = true;
         Qt.callLater(function () {
@@ -621,6 +631,7 @@ Item {
         root.clearAnimationTimingPreview();
         root.backgroundBlurPreview = -1;
         root.backgroundDimPreview = -1;
+        root.hotCornerDelayPreview = -1;
         if (restoreKeyboardFocus)
             Qt.callLater(function () {
                 if (root.opened)
@@ -647,6 +658,16 @@ Item {
         var position = root.hotCornerPositions.indexOf(value) !== -1 ? value : "top-left";
         if (position !== root.hotCornerPosition)
             root.updatePluginSetting("hotCornerPosition", position);
+    }
+
+    function setHotCornerDelay(value) {
+        var numeric = Number(value);
+        if (!isFinite(numeric))
+            return root.hotCornerDelay;
+        var next = Math.max(0, Math.min(1000, Math.round(numeric)));
+        if (next !== root.hotCornerDelay)
+            root.updatePluginSetting("hotCornerDelay", next);
+        return next;
     }
 
     function setMoveCursorToWindow(enabled) {
@@ -1645,6 +1666,9 @@ Item {
             root.setHotCornerPosition(position);
             return position;
         }
+        function hotCornerDelay(value: real): string {
+            return String(root.setHotCornerDelay(value));
+        }
         function moveCursorToWindow(mode: string): string {
             if (mode !== "on" && mode !== "off")
                 return "expected on or off";
@@ -1670,6 +1694,30 @@ Item {
         implicitWidth: root.hotCornerReach
         implicitHeight: root.hotCornerReach
 
+        // The two strips overlap in the corner square, so hovering is tracked
+        // across both: sliding from one into the other must not restart the
+        // dwell or report a spurious exit.
+        onHoveredChanged: {
+            if (cornerTarget.hovered) {
+                if (root.effectiveHotCornerDelay > 0)
+                    dwellTimer.restart();
+                else
+                    cornerTarget.entered();
+            } else {
+                dwellTimer.stop();
+                cornerTarget.exited();
+            }
+        }
+
+        Timer {
+            id: dwellTimer
+            interval: root.effectiveHotCornerDelay
+            onTriggered: {
+                if (cornerTarget.hovered)
+                    cornerTarget.entered();
+            }
+        }
+
         MouseArea {
             id: horizontalTarget
             x: 0
@@ -1678,8 +1726,6 @@ Item {
             height: root.hotCornerDepth
             hoverEnabled: true
             acceptedButtons: Qt.NoButton
-            onEntered: cornerTarget.entered()
-            onExited: cornerTarget.exited()
         }
 
         MouseArea {
@@ -1690,8 +1736,6 @@ Item {
             height: parent.height
             hoverEnabled: true
             acceptedButtons: Qt.NoButton
-            onEntered: cornerTarget.entered()
-            onExited: cornerTarget.exited()
         }
     }
 

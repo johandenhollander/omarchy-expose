@@ -97,7 +97,7 @@ Open **Settings** from the footer while the overview is open. It is fully keyboa
 - Window footer style: floating, integrated, overlay, or centered
 - Multiple displays: Same overview (all windows together on the selected display) or Per monitor (only that display's windows)
 - Bottom text visibility. Hiding it requires confirmation and removes the Settings link
-- Hot corner on/off and position (disable the same corner in other hot-corner plugins to avoid overlap)
+- Hot corner on/off, position (disable the same corner in other hot-corner plugins to avoid overlap), and activation delay (0–1000 ms of pointer dwell before it fires; 0 is instant)
 - Move cursor to the activated window on/off
 
 Every reversible setting is also scriptable:
@@ -119,6 +119,7 @@ omarchy-shell expose windowFooterStyle floating  # floating | integrated | overl
 omarchy-shell expose multiMonitorMode mirrored   # mirrored | per-monitor
 omarchy-shell expose hotCorner on                # on | off
 omarchy-shell expose hotCornerPosition top-left  # top-left | top-right | bottom-left | bottom-right
+omarchy-shell expose hotCornerDelay 0            # 0-1000 ms of dwell before it fires
 omarchy-shell expose moveCursorToWindow on       # on | off
 ```
 
