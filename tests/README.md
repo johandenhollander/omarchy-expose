@@ -6,6 +6,11 @@ temporary config and the installed Omarchy host's actual `PluginShellApi`,
 It creates no windows and does not access the live user's shell.json. Pass a shell
 source directory as its argument to check another host version.
 
+`./tests/check-hot-corner-runtime` extracts the actual inline `HotCornerTarget`
+into an offscreen Qt Quick test. It checks immediate activation, one-shot dwell,
+exit cancellation, and transitions through the overlapping strips in both
+directions. It runs as part of `./validate`.
+
 The runtime check covers saved settings, 203 rapid edits, nested animation
 settings, preservation of unknown fields and other entries, atomic file watching,
 and external edits/deletions. Unit tests deterministically exercise delayed

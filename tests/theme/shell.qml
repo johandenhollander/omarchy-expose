@@ -18,6 +18,9 @@ ShellRoot {
         property int effectiveBackgroundDim: 6
         property bool hotCornerEnabled: false
         property string hotCornerPosition: "top-left"
+        property int hotCornerDelayPreview: -1
+        property int hotCornerDelay: 0
+        readonly property int effectiveHotCornerDelay: hotCornerDelayPreview >= 0 ? hotCornerDelayPreview : hotCornerDelay
         property bool moveCursorToWindow: true
         property string multiMonitorMode: "mirrored"
         property string previewPlacement: "in-place"
@@ -38,6 +41,7 @@ ShellRoot {
         property int previewAnimationEasing: Easing.OutQuart
         property int previewFadeDuration: 130
         function animationTimingFor(style) { return {"in":190,"out":190,separate:false}; }
+        function setHotCornerDelay(value) { hotCornerDelay = value; return value; }
         function animationInDurationFor(style) { return 190; }
         function animationOutDurationFor(style) { return 190; }
         function aspectRatioFor(model) { return 1.8; }

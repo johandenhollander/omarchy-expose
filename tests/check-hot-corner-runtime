@@ -1,0 +1,21 @@
+#!/bin/bash
+# Exercise the actual inline corner component without opening the overview.
+set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+test_dir=$(mktemp -d)
+trap 'rm -rf "$test_dir"' EXIT
+
+sed -n '/^    component HotCornerTarget: Item {$/,/^    }$/p' Overview.qml > "$test_dir/component.qml"
+if [[ ! -s $test_dir/component.qml ]]; then
+  echo "hot corner check: could not extract HotCornerTarget from Overview.qml" >&2
+  exit 1
+fi
+while IFS= read -r line; do
+  if [[ $line == '// HOT CORNER COMPONENT' ]]; then
+    cat "$test_dir/component.qml"
+  else
+    printf '%s\n' "$line"
+  fi
+done < tests/runtime/hot-corner.qml > "$test_dir/tst_hot_corner.qml"
+
+QT_QPA_PLATFORM=offscreen timeout 15s /usr/lib/qt6/bin/qmltestrunner -input "$test_dir/tst_hot_corner.qml"
